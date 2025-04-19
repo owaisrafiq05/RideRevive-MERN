@@ -57,7 +57,7 @@ const Login = () => {
         toast.success(response.data.message || "Login successful!");
         Cookies.set('token', response.data.token); // Save token in cookies
         localStorage.setItem('userData', JSON.stringify(response.data.data)); // Save user data
-        navigate(`/dashboard`); // Redirect to dashboard
+        navigate(`/`); // Redirect to dashboard
       }
     } catch (error) {
       console.error('Login error:', error);
