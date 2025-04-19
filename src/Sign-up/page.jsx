@@ -1,38 +1,24 @@
 import React, { useState } from "react";
 import { FaImage } from "react-icons/fa6";
 import axios from "axios";
-
-// Mock toast functionality (you might want to use a library like react-toastify or react-hot-toast)
-const toast = {
-  success: (message) => alert(`Success: ${message}`),
-  error: (message) => alert(`Error: ${message}`)
-};
+import { useNavigate } from 'react-router-dom';
+import { toast } from "sonner";
 
 const Signup = () => {
   const [formData, setFormData] = useState({
     name: "",
-    contact: "",
     email: "",
-    cnic: "",
-    institution: "",
-    socialHandle: "",
-    profileImage: null,
-    imagePreview: null,
+    password: "",
+    phone: "",
   });
 
   const [loading, setLoading] = useState(false);
   const [captchaValue, setCaptchaValue] = useState(null);
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { id, value } = e.target;
-
-    // Automatically format CNIC
-    if (id === "cnic") {
-      const formattedCnic = formatCnic(value);
-      setFormData({ ...formData, cnic: formattedCnic });
-    } else {
-      setFormData({ ...formData, [id]: value });
-    }
+    setFormData({ ...formData, [id]: value });
   };
 
   const formatCnic = (value) => {
@@ -72,49 +58,7 @@ const Signup = () => {
   };
 
   const validateForm = () => {
-    // Name validation (only letters and spaces)
-    const nameRegex = /^[a-zA-Z\s]+$/;
-    if (!nameRegex.test(formData.name)) {
-      toast.error("Name can only contain letters and spaces.");
-      return false;
-    }
-    
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      toast.error("Please enter a valid email address");
-      return false;
-    }
-
-    // Contact validation (11-digit number)
-    const contactRegex = /^\d{11}$/;
-    if (!contactRegex.test(formData.contact)) {
-      toast.error("Please enter a valid 11-digit mobile number");
-      return false;
-    }
-
-    // CNIC validation
-    const cnicRegex = /^\d{5}-\d{7}-\d{1}$/;
-    if (!cnicRegex.test(formData.cnic)) {
-      toast.error("Please enter a valid CNIC number (XXXXX-XXXXXXX-X)");
-      return false;
-    }
-
-    // Required fields validation
-    const requiredFields = ['name', 'contact', 'email', 'cnic', 'institution', 'socialHandle'];
-    const emptyFields = requiredFields.filter(field => !formData[field]);
-    
-    if (emptyFields.length > 0) {
-      toast.error(`Please fill in all required fields: ${emptyFields.join(', ')}`);
-      return false;
-    }
-
-    // Profile image validation
-    if (!formData.profileImage) {
-      toast.error("Please upload a profile image");
-      return false;
-    }
-
+    // Add your validation logic here
     return true;
   };
 
@@ -122,38 +66,22 @@ const Signup = () => {
     e.preventDefault();
     setLoading(true);
 
-    // Check if form is valid
     if (!validateForm()) {
       setLoading(false);
       return;
     }
 
     try {
-      // Create FormData object for multipart/form-data
-      const submitData = new FormData();
-      submitData.append('Name', formData.name);
-      submitData.append('Contact', formData.contact);
-      submitData.append('Email', formData.email);
-      submitData.append('CNIC', formData.cnic);
-      submitData.append('Institution', formData.institution);
-      submitData.append('Instagram_Handle', formData.socialHandle);
-      submitData.append('ProfilePhoto', formData.profileImage);
+      const response = await axios.post('http://localhost:3000/api/users/signup', {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        phone: formData.phone,
+      });
 
-      const response = await axios.post(
-        'https://your-api-endpoint/signup',
-        submitData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      );
-
-      if (response.data.success) {
+      if (response.data.status) {
         toast.success(response.data.message || "Signup successful!");
-        localStorage.setItem('userData', JSON.stringify(response.data.user));
-        // Redirect to verification page or dashboard
-        window.location.href = '/verify';
+        navigate('/otp'); // Redirect to OTP page
       }
     } catch (error) {
       console.error('Signup error:', error);
@@ -263,9 +191,7 @@ const Signup = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
-                <label className="text-sm text-gray-300 mb-1.5 block">
-                  Full Name
-                </label>
+                <label className="text-sm text-gray-300 mb-1.5 block">Full Name</label>
                 <input
                   type="text"
                   id="name"
@@ -278,25 +204,7 @@ const Signup = () => {
               </div>
 
               <div>
-                <label className="text-sm text-gray-300 mb-1.5 block">
-                  Phone Number
-                </label>
-                <input
-                  type="text"
-                  id="contact"
-                  value={formData.contact}
-                  placeholder="03XXXXXXXXX"
-                  onChange={handleChange}
-                  className="w-full px-4 py-2.5 bg-[#2a2a2a] border border-gray-700 rounded-lg text-white 
-                           focus:outline-none focus:border-blue-500 transition-colors"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-sm text-gray-300 mb-1.5 block">
-                  Email Address
-                </label>
+                <label className="text-sm text-gray-300 mb-1.5 block">Email Address</label>
                 <input
                   type="email"
                   id="email"
@@ -309,15 +217,12 @@ const Signup = () => {
               </div>
 
               <div>
-                <label className="text-sm text-gray-300 mb-1.5 block">
-                  ID Number (CNIC)
-                </label>
+                <label className="text-sm text-gray-300 mb-1.5 block">Password</label>
                 <input
-                  type="text"
-                  id="cnic"
-                  value={formData.cnic}
+                  type="password"
+                  id="password"
+                  value={formData.password}
                   onChange={handleChange}
-                  placeholder="XXXXX-XXXXXXX-X"
                   className="w-full px-4 py-2.5 bg-[#2a2a2a] border border-gray-700 rounded-lg text-white 
                            focus:outline-none focus:border-blue-500 transition-colors"
                   required
@@ -325,31 +230,12 @@ const Signup = () => {
               </div>
 
               <div>
-                <label className="text-sm text-gray-300 mb-1.5 block">
-                  Vehicle Make/Model
-                </label>
+                <label className="text-sm text-gray-300 mb-1.5 block">Phone Number</label>
                 <input
                   type="text"
-                  id="institution"
-                  value={formData.institution}
+                  id="phone"
+                  value={formData.phone}
                   onChange={handleChange}
-                  placeholder="Toyota Corolla, Honda Civic, etc."
-                  className="w-full px-4 py-2.5 bg-[#2a2a2a] border border-gray-700 rounded-lg text-white 
-                           focus:outline-none focus:border-blue-500 transition-colors"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-sm text-gray-300 mb-1.5 block">
-                  Social Media Profile
-                </label>
-                <input
-                  type="text"
-                  id="socialHandle"
-                  value={formData.socialHandle}
-                  onChange={handleChange}
-                  placeholder="Instagram or Facebook URL"
                   className="w-full px-4 py-2.5 bg-[#2a2a2a] border border-gray-700 rounded-lg text-white 
                            focus:outline-none focus:border-blue-500 transition-colors"
                   required
