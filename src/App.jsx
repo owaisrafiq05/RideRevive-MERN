@@ -9,6 +9,12 @@ const Login = lazy(() => import('./Login/page'));
 const Otp = lazy(() => import('./Otp/page'));
 const Dashboard = lazy(() => import('./Dashboard/page'));
 const Form = lazy(() => import('./components/HomeComponents/form'));
+const FuelDeliveryForm = lazy(() => import('./components/Service Components/FuelDeliveryForm'));
+const CarWashingForm = lazy(() => import('./components/Service Components/CarWashingForm'));
+const TireServicesForm = lazy(() => import('./components/Service Components/TireServicesForm'));
+const EmergencyRescueForm = lazy(() => import('./components/Service Components/EmergencyRescueForm'));
+const BatteryServicesForm = lazy(() => import('./components/Service Components/BatteryServicesForm'));
+const EngineOilServicesForm = lazy(() => import('./components/Service Components/EngineOilServicesForm'));
 import { Toaster } from 'sonner';
 
 function App() {
@@ -36,6 +42,12 @@ function App() {
         <Route path="/otp" element={<Otp />} />
         <Route path="/" element={<Dashboard />} />
         <Route path="/form" element={<Form />} />
+        <Route path="/fuel-delivery" element={<FuelDeliveryForm />} />
+        <Route path="/car-washing" element={<CarWashingForm />} />
+        <Route path="/tire-services" element={<TireServicesForm />} />
+        <Route path="/emergency-rescue" element={<EmergencyRescueForm />} />
+        <Route path="/battery-services" element={<BatteryServicesForm />} />
+        <Route path="/engine-oil-services" element={<EngineOilServicesForm />} />
       </Routes>
     </Suspense>
   );

@@ -6,27 +6,32 @@ import Cookies from "js-cookie";
 import { toast } from "sonner";
 
 const Sidebar = () => {
-  const [isOpen, setIsOpen] = useState(false); // Default to closed
+  const [isOpen, setIsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [activeLink, setActiveLink] = useState("home");
   const navigate = useNavigate();
 
-  // Check for mobile view on mount and window resize
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 1024);
-      // Set sidebar state based on screen size
       setIsOpen(window.innerWidth >= 1024);
     };
 
-    // Initial check
     checkMobile();
-
-    // Add event listener for window resize
     window.addEventListener('resize', checkMobile);
 
-    // Cleanup
-    return () => window.removeEventListener('resize', checkMobile);
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.sidebar') && !event.target.closest('.toggle-button')) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+      document.removeEventListener('click', handleClickOutside);
+    };
   }, []);
 
   const menuItems = [
@@ -55,19 +60,14 @@ const Sidebar = () => {
   const handleLinkClick = (id) => {
     setActiveLink(id);
     if (isMobile) {
-      setIsOpen(false); // Close sidebar on mobile after clicking a link
+      setIsOpen(false);
     }
   };
 
   const handleLogout = () => {
-    // Remove token and userId from cookies
     Cookies.remove('token');
     Cookies.remove('userId');
-    
-    // Show success message
     toast.success('Logged out successfully');
-    
-    // Redirect to login page
     navigate('/login');
   };
 
@@ -75,15 +75,15 @@ const Sidebar = () => {
     <div className="relative">
       <button
         onClick={toggleSidebar}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-200"
+        className="toggle-button lg:hidden fixed top-4 left-4 z-50 p-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-200"
         aria-label={isOpen ? "Close sidebar" : "Open sidebar"}
       >
         {isOpen ? <FiX className="w-6 h-6" /> : <FiMenu className="w-6 h-6" />}
       </button>
 
       <aside
-        className={`fixed top-0 left-0 h-screen bg-[#242424] border-r border-blue-500/20 shadow-xl transition-all duration-300 ease-in-out z-40
-          ${isOpen ? "w-64" : "w-0 lg:w-20"} overflow-hidden`}
+        className={`sidebar fixed top-0 left-0 h-screen bg-[#242424] border-r border-blue-500/20 shadow-xl transition-all duration-300 ease-in-out z-40
+          ${isOpen ? "w-64" : "w-20"} overflow-hidden`}
         aria-label="Sidebar navigation"
       >
         <div className="h-full flex flex-col px-4 py-6 pt-16 md:pt-4">
@@ -103,7 +103,10 @@ const Sidebar = () => {
                 <li key={item.id}>
                   <Link
                     to={item.path}
-                    onClick={() => handleLinkClick(item.id)}
+                    onClick={() => {
+                      handleLinkClick(item.id);
+                      if (item.id === "home") toggleSidebar();
+                    }}
                     className={`w-full flex items-center px-4 py-3 rounded-lg transition-colors duration-200
                       ${activeLink === item.id
                         ? "bg-gradient-to-r from-blue-700 to-blue-600 text-white"
@@ -118,7 +121,6 @@ const Sidebar = () => {
             </ul>
           </nav>
 
-          {/* Logout Button */}
           <button
             onClick={handleLogout}
             className="w-full flex items-center px-4 py-3 rounded-lg transition-colors duration-200
