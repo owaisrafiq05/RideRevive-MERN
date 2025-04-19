@@ -1,14 +1,16 @@
 import React, { useState } from "react";
-
-// Mock toast functionality (you might want to use a library like react-toastify or react-hot-toast)
-const toast = {
-  success: (message) => alert(`Success: ${message}`),
-  error: (message) => alert(`Error: ${message}`)
-};
+import axios from "axios";
+import { useNavigate, useLocation } from 'react-router-dom';
+import { toast } from "sonner";
 
 const OtpVerification = () => {
-  const [otp, setOtp] = useState(["", "", "", ""]);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
+
+  const navigate = useNavigate();
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const email = queryParams.get('email');
 
   const handleChange = (e, index) => {
     const value = e.target.value;
@@ -35,19 +37,32 @@ const OtpVerification = () => {
     setLoading(true);
 
     const otpCode = otp.join("");
-    if (otpCode.length !== 4) {
-      toast.error("Please enter a 4-digit OTP code");
+    if (otpCode.length !== 6) {
+      toast.error("Please enter a 6-digit OTP code");
       setLoading(false);
       return;
     }
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      toast.success("OTP verified successfully!");
-      // Redirect or perform further actions
+      const response = await axios.post(`${import.meta.env.VITE_SERVER_URL}/users/verify-otp`, {
+        email: email,
+        otp: otpCode,
+      });
+
+      if (response.data.status) {
+        toast.success(response.data.message || "OTP verified successfully!");
+        // Redirect or perform further actions
+        navigate('/login'); // Replace with actual next page
+      }
     } catch (error) {
-      toast.error("Failed to verify OTP");
+      console.error('OTP verification error:', error);
+      if (error.response) {
+        toast.error(error.response.data.message || 'Failed to verify OTP');
+      } else if (error.request) {
+        toast.error('No response from server. Please try again later.');
+      } else {
+        toast.error('An error occurred during OTP verification');
+      }
     } finally {
       setLoading(false);
     }

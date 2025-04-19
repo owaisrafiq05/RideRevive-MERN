@@ -72,7 +72,7 @@ const Signup = () => {
     }
 
     try {
-      const response = await axios.post('http://localhost:3000/api/users/signup', {
+      const response = await axios.post(`${import.meta.env.VITE_SERVER_URL}/users/signup`, {
         name: formData.name,
         email: formData.email,
         password: formData.password,
@@ -81,7 +81,7 @@ const Signup = () => {
 
       if (response.data.status) {
         toast.success(response.data.message || "Signup successful!");
-        navigate('/otp'); // Redirect to OTP page
+        navigate(`/otp?email=${formData.email}`); // Redirect to OTP page
       }
     } catch (error) {
       console.error('Signup error:', error);

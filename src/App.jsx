@@ -8,6 +8,7 @@ const Login = lazy(() => import('./Login/page'));
 const Otp = lazy(() => import('./Otp/page'));
 const Dashboard = lazy(() => import('./Dashboard/page'));
 const Form = lazy(() => import('./components/HomeComponents/form'));
+import { Toaster, toast } from 'sonner';
 
 
 function App() {
@@ -18,6 +19,7 @@ function App() {
   return (
     <Suspense fallback={<div className="text-white text-center p-4">Loading...</div>}>
       {showSidebar && <Sidebar />}
+      <Toaster />
       <Routes>
         <Route path="/" element={<Signup />} />
         <Route path="/login" element={<Login />} />

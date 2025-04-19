@@ -1,11 +1,9 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { toast } from "sonner"; // Import Sonner for notifications
+import Cookies from 'js-cookie'; // Import js-cookie for cookie management
 
 // Mock toast functionality (you might want to use a library like react-toastify or react-hot-toast)
-const toast = {
-  success: (message) => alert(`Success: ${message}`),
-  error: (message) => alert(`Error: ${message}`)
-};
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -48,16 +46,16 @@ const Login = () => {
     }
 
     try {
-      const response = await axios.post(
-        'https://your-api-endpoint/login',
-        formData
-      );
+      const response = await axios.post(`${import.meta.env.VITE_SERVER_URL}/users/login`, {
+        email: formData.email,
+        password: formData.password,
+      });
 
-      if (response.data.success) {
-        toast.success(response.data.message || "Login successful!");
-        localStorage.setItem('userData', JSON.stringify(response.data.user));
-        // Redirect to dashboard or home page
-        window.location.href = '/dashboard';
+      if (response.data.status) {
+        toast.success(response.data.message || "User login successful!");
+        Cookies.set('token', response.data.token); // Save token in cookies
+        localStorage.setItem('userData', JSON.stringify(response.data.data)); // Save user data
+        window.location.href = '/dashboard'; // Redirect to dashboard
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -117,13 +115,10 @@ const Login = () => {
                       transition-colors duration-200 font-medium flex items-center justify-center"
             >
               {loading ? (
-                <>
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Processing...
-                </>
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
               ) : (
                 "Log In"
               )}
