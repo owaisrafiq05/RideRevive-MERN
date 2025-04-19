@@ -1,16 +1,19 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { lazy, Suspense } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import './App.css';
+
+const Signup = lazy(() => import('./Sign-up/page'));
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <div className='text-3xl font-bold text-red-500'>Hello World</div>
-    </>
-  )
+    <Router>
+      <Suspense fallback={<div className="text-white text-center p-4">Loading...</div>}>
+        <Routes>
+          <Route path="/" element={<Signup />} />
+        </Routes>
+      </Suspense>
+    </Router>
+  );
 }
 
-export default App
+export default App;
