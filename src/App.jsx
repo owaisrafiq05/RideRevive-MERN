@@ -9,6 +9,7 @@ const Login = lazy(() => import('./Login/page'));
 const Otp = lazy(() => import('./Otp/page'));
 const Dashboard = lazy(() => import('./Dashboard/page'));
 const Form = lazy(() => import('./components/HomeComponents/form'));
+const CardDisplay = lazy(() => import('./carddisplay/page'));
 import { Toaster } from 'sonner';
 
 function App() {
@@ -36,6 +37,7 @@ function App() {
         <Route path="/otp" element={<Otp />} />
         <Route path="/" element={<Dashboard />} />
         <Route path="/form" element={<Form />} />
+        <Route path="/carddisplay" element={<CardDisplay />} /> 
       </Routes>
     </Suspense>
   );

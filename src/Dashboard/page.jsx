@@ -4,7 +4,7 @@ const DashboardPage = () => {
   return (
     <div className="min-h-screen bg-[#242424] text-white p-4">
       <h1 className="text-3xl font-bold mb-4">Dashboard</h1>
-      <p>Welcome to the Dashboard! Here you can manage your services and view your account details.</p>
+     
       {/* Add more dashboard content here */}
     </div>
   );
