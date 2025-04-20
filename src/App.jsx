@@ -43,6 +43,7 @@ function App() {
         <Route path="/otp" element={<Otp />} />
         <Route path="/" element={<Dashboard />} />
         <Route path="/form" element={<Form />} />
+        <Route path="/vehicles" element={<CardDisplay />} />
       </Routes>
     </Suspense>
   );

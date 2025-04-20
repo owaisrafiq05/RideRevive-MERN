@@ -1,5 +1,10 @@
 import { useState } from "react"
 import { ChevronLeft, Info } from "lucide-react"
+import axios from "axios"
+import { toast } from "sonner"
+import Cookies from 'js-cookie'
+import { jwtDecode } from "jwt-decode"
+import { useNavigate } from 'react-router-dom';
 
 const CarForm = () => {
   const [formData, setFormData] = useState({
@@ -14,23 +19,74 @@ const CarForm = () => {
     vin: "",
   })
 
+  const navigate = useNavigate();
+
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData({ ...formData, [name]: value })
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    console.log(formData)
+    
+    if (!formData.make || !formData.model || !formData.year || !formData.licensePlate) {
+      toast.error("Please fill in all required fields.")
+      return
+    }
+
+    try {
+      const token = Cookies.get('token')
+      console.log(token)
+      if (!token) {
+        toast.error("User not authenticated.")
+        return
+      }
+
+      const decodedToken = jwtDecode(token)
+      const userId = decodedToken._id
+
+      const response = await axios.post('http://localhost:3000/api/cars/add', {
+        user: userId,
+        ...formData,
+      })
+
+      if (response.data.status) {
+        toast.success(response.data.message || "Car added successfully!")
+        setFormData({
+          make: "",
+          model: "",
+          year: "",
+          licensePlate: "",
+          color: "",
+          fuelType: "petrol",
+          transmission: "manual",
+          mileage: "",
+          vin: "",
+        })
+      }
+    } catch (error) {
+      console.error('Error adding car:', error)
+      if (error.response) {
+        toast.error(error.response.data.message || 'Failed to add car')
+      } else if (error.request) {
+        toast.error('No response from server. Please try again later.')
+      } else {
+        toast.error('An error occurred while adding the car')
+      }
+    }
   }
 
+  const handleAddClick = () => {
+    navigate('/vehicles');
+  };
+
   return (
-    <div className="min-h-screen bg-[#242424] text-white flex flex-col flex-1">
+    <div className="relative pl-24 min-h-screen bg-[#242424] text-white flex flex-col flex-1">
       {/* Header */}
       <div className="p-4 border-b border-gray-700">
         <div className="w-full">
           <div className="flex items-center gap-2 mb-4">
-            <button className="p-2 hover:bg-[#2a2a2a] rounded-full transition-colors">
+            <button className="p-2 hover:bg-[#2a2a2a] rounded-full transition-colors" onClick={handleAddClick}>
               <ChevronLeft size={20} />
             </button>
             <span className="text-sm text-gray-400">Back to Vehicles</span>
@@ -175,6 +231,7 @@ const CarForm = () => {
               <div className="pt-4 border-t border-gray-700 flex justify-end gap-4">
                 <button
                   type="button"
+                  onClick={handleAddClick}
                   className="px-6 py-2.5 bg-transparent hover:bg-gray-700 text-white rounded-lg 
                           transition-colors duration-200 font-medium"
                 >
