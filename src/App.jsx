@@ -16,6 +16,7 @@ const EmergencyRescueForm = lazy(() => import('./components/Service Components/E
 const BatteryServicesForm = lazy(() => import('./components/Service Components/BatteryServicesForm'));
 const EngineOilServicesForm = lazy(() => import('./components/Service Components/EngineOilServicesForm'));
 const ServiceListPage = lazy(() => import('./components/Service Page/ServiceListPage'));
+const CardDisplay = lazy(() => import('./carddisplay/page'));
 import { Toaster } from 'sonner';
 
 function App() {

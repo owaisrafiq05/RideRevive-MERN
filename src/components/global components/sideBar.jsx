@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { FiHome, FiSettings, FiLogOut, FiMenu, FiX } from "react-icons/fi";
 import { FaTrophy } from "react-icons/fa";
 import { FaCar } from "react-icons/fa";
+import { FaCartPlus } from "react-icons/fa";
 import { Link, useNavigate } from 'react-router-dom';
 import Cookies from "js-cookie";
 import { toast } from "sonner";
@@ -43,10 +44,16 @@ const Sidebar = () => {
       path: "/"
     },
     {
-      id: "vehicles",
-      title: "Vehicles",
-      icon: <FaCar className="w-5 h-5" />,
-      path: "/vehicles"
+      id: "services",
+      title: "Services",
+      icon: <FaCartPlus className="w-5 h-5" />,
+      path: "/services"
+    },  
+    {
+        id: "vehicles",
+        title: "Vehicles",
+        icon: <FaCar className="w-5 h-5" />,
+        path: "/vehicles"
     },
     {
       id: "leaderboard",
