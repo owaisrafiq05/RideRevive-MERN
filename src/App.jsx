@@ -19,6 +19,7 @@ const ServiceListPage = lazy(() => import('./components/Service Page/ServiceList
 const CardDisplay = lazy(() => import('./carddisplay/page'));
 import { Toaster } from 'sonner';
 const AdminLogin = lazy(() => import('./Login/admin_login'));
+const AdminDashboard = lazy(() => import('./Dashboard/Admin_Dashboard'));
 
 function App() {
   const location = useLocation();
@@ -54,6 +55,7 @@ function App() {
         <Route path="/services" element={<ServiceListPage />} />
         <Route path="/vehicles" element={<CardDisplay />} />
         <Route path="/admin-login" element={<AdminLogin />} />
+        <Route path="/admin-dashboard" element={<AdminDashboard />} />
       </Routes>
     </Suspense>
   );
