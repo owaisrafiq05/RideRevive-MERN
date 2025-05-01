@@ -18,6 +18,7 @@ const EngineOilServicesForm = lazy(() => import('./components/Service Components
 const ServiceListPage = lazy(() => import('./components/Service Page/ServiceListPage'));
 const CardDisplay = lazy(() => import('./carddisplay/page'));
 import { Toaster } from 'sonner';
+const AdminLogin = lazy(() => import('./Login/admin_login'));
 
 function App() {
   const location = useLocation();
@@ -52,6 +53,7 @@ function App() {
         <Route path="/engine-oil-services" element={<EngineOilServicesForm />} />
         <Route path="/services" element={<ServiceListPage />} />
         <Route path="/vehicles" element={<CardDisplay />} />
+        <Route path="/admin-login" element={<AdminLogin />} />
       </Routes>
     </Suspense>
   );
