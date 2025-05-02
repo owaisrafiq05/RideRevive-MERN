@@ -32,60 +32,16 @@ const AdminDashboard = () => {
   const [admin, setAdmin] = useState({ name: "Admin" })
   const [isLoading, setIsLoading] = useState(true)
   const [stats, setStats] = useState({
-    totalUsers: 124,
-    totalVehicles: 178,
-    totalOrders: 87,
-    totalRevenue: 15420,
-    pendingOrders: 12,
-    completedOrders: 75,
+    totalUsers: 0,
+    totalVehicles: 0,
+    totalOrders: 0,
+    totalRevenue: 0,
+    pendingOrders: 0,
+    completedOrders: 0,
   })
   const [recentOrders, setRecentOrders] = useState([])
   const [topServices, setTopServices] = useState([])
   const navigate = useNavigate()
-
-  // Mock recent orders data
-  const mockRecentOrders = [
-    {
-      id: "ORD-1234",
-      customer: "John Doe",
-      service: "Fuel Delivery",
-      date: "2023-05-01",
-      time: "09:15 AM",
-      status: "completed",
-      amount: 65,
-      vehicle: "2019 Toyota Camry",
-    },
-    {
-      id: "ORD-1235",
-      customer: "Sarah Williams",
-      service: "Battery Replacement",
-      date: "2023-05-01",
-      time: "11:30 AM",
-      status: "in-progress",
-      amount: 120,
-      vehicle: "2020 Honda Civic",
-    },
-    {
-      id: "ORD-1236",
-      customer: "Michael Johnson",
-      service: "Oil Change",
-      date: "2023-05-01",
-      time: "01:45 PM",
-      status: "pending",
-      amount: 45,
-      vehicle: "2018 Ford Focus",
-    },
-    {
-      id: "ORD-1237",
-      customer: "Emily Brown",
-      service: "Tire Services",
-      date: "2023-05-01",
-      time: "03:00 PM",
-      status: "completed",
-      amount: 95,
-      vehicle: "2021 Mazda 3",
-    },
-  ]
 
   // Mock top services data
   const mockTopServices = [
@@ -145,19 +101,68 @@ const AdminDashboard = () => {
       }
     }
 
-    const loadDashboardData = () => {
-      // In a real app, these would be actual API calls
-      setRecentOrders(mockRecentOrders)
-      setTopServices(mockTopServices)
+    fetchAdminData()
+    fetchOrders()
+  }, [])
+
+  const fetchOrders = async () => {
+    setIsLoading(true)
+    try {
+      // Fetch all orders
+      const response = await axios.get("http://localhost:3000/api/orders")
+      
+      if (response.data.success) {
+        const allOrders = response.data.data
+        
+        // Get recent orders (most recent 4)
+        const sortedOrders = [...allOrders].sort((a, b) => 
+          new Date(b.createdAt) - new Date(a.createdAt)
+        )
+        setRecentOrders(sortedOrders.slice(0, 4))
+        
+        // Calculate stats
+        const totalRevenue = allOrders.reduce((sum, order) => sum + order.totalAmount, 0)
+        const pendingOrders = allOrders.filter(order => order.status === "pending").length
+        const completedOrders = allOrders.filter(order => order.status === "completed").length
+        
+        setStats(prev => ({
+          ...prev,
+          totalOrders: allOrders.length,
+          totalRevenue,
+          pendingOrders,
+          completedOrders
+        }))
+        
+        // Calculate top services (simplified)
+        setTopServices(mockTopServices)
+      } else {
+        toast.error("Failed to fetch orders")
+      }
+    } catch (error) {
+      console.error("Error fetching orders:", error)
+      toast.error("Error loading dashboard data")
+    } finally {
       setIsLoading(false)
     }
+  }
 
-    fetchAdminData()
+  // Fetch user and vehicle stats
+  const fetchStats = async () => {
+    try {
+      // In a real app, you would have endpoints for these stats
+      // For now, let's use placeholder values
+      setStats(prev => ({
+        ...prev,
+        totalUsers: 124,
+        totalVehicles: 178
+      }))
+    } catch (error) {
+      console.error("Error fetching stats:", error)
+    }
+  }
 
-    // Small delay to simulate API calls
-    setTimeout(() => {
-      loadDashboardData()
-    }, 1000)
+  useEffect(() => {
+    fetchStats()
   }, [])
 
   const formatDate = (dateString) => {
@@ -198,7 +203,7 @@ const AdminDashboard = () => {
             </div>
             <div className="mt-4 md:mt-0 flex gap-3">
               <button
-                onClick={() => navigate("/orders")}
+                onClick={() => navigate("/admin/orders")}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 shadow-lg shadow-blue-600/20"
               >
                 <ShoppingBag className="h-4 w-4" />
@@ -271,7 +276,7 @@ const AdminDashboard = () => {
               <div className="p-6 border-b border-gray-800 flex justify-between items-center">
                 <h2 className="text-xl font-bold text-white">Recent Orders</h2>
                 <button
-                  onClick={() => navigate("/orders")}
+                  onClick={() => navigate("/admin/orders")}
                   className="text-blue-400 hover:text-blue-300 transition-colors"
                 >
                   <FileText className="h-5 w-5" />
@@ -305,17 +310,24 @@ const AdminDashboard = () => {
                       </thead>
                       <tbody>
                         {recentOrders.map((order) => (
-                          <tr key={order.id} className="border-b border-gray-800 hover:bg-gray-800/30">
-                            <td className="py-4 text-white font-medium">{order.id}</td>
-                            <td className="py-4 text-gray-300">{order.customer}</td>
-                            <td className="py-4 text-gray-300">{order.service}</td>
+                          <tr key={order._id} className="border-b border-gray-800 hover:bg-gray-800/30">
+                            <td className="py-4 text-white font-medium">{order._id.substring(0, 8)}</td>
+                            <td className="py-4 text-gray-300">{order.user?.name || "Unknown"}</td>
+                            <td className="py-4 text-gray-300">
+                              {order.services.map(item => item.serviceName || item.service?.name || "Unknown Service").join(", ")}
+                            </td>
                             <td className="py-4 text-gray-300">
                               <div className="flex flex-col">
-                                <span>{formatDate(order.date)}</span>
-                                <span className="text-xs text-gray-400">{order.time}</span>
+                                <span>{formatDate(order.scheduledDate)}</span>
+                                <span className="text-xs text-gray-400">
+                                  {new Date(order.scheduledDate).toLocaleTimeString([], {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
                               </div>
                             </td>
-                            <td className="py-4 text-white font-medium">${order.amount}</td>
+                            <td className="py-4 text-white font-medium">${order.totalAmount}</td>
                             <td className="py-4">
                               <span
                                 className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium capitalize bg-${getStatusColor(
@@ -327,7 +339,7 @@ const AdminDashboard = () => {
                             </td>
                             <td className="py-4">
                               <button
-                                onClick={() => navigate(`/orders/${order.id}`)}
+                                onClick={() => navigate(`/admin/orders/${order._id}`)}
                                 className="text-blue-400 hover:text-blue-300 transition-colors"
                               >
                                 <ChevronRight className="h-5 w-5" />
@@ -338,7 +350,7 @@ const AdminDashboard = () => {
                       </tbody>
                     </table>
                     <button
-                      onClick={() => navigate("/orders")}
+                      onClick={() => navigate("/admin/orders")}
                       className="w-full text-center text-blue-400 hover:text-blue-300 text-sm py-4 flex items-center justify-center gap-1 mt-4"
                     >
                       View All Orders <ChevronRight className="h-4 w-4" />
@@ -385,10 +397,21 @@ const AdminDashboard = () => {
                 <div className="mt-6">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-medium text-white">Order Completion Rate</h3>
-                    <span className="text-green-400 text-sm font-medium">86%</span>
+                    <span className="text-green-400 text-sm font-medium">
+                      {stats.totalOrders > 0 
+                        ? Math.round((stats.completedOrders / stats.totalOrders) * 100) 
+                        : 0}%
+                    </span>
                   </div>
                   <div className="w-full bg-gray-700 rounded-full h-2.5">
-                    <div className="bg-green-500 h-2.5 rounded-full" style={{ width: "86%" }}></div>
+                    <div 
+                      className="bg-green-500 h-2.5 rounded-full" 
+                      style={{ 
+                        width: `${stats.totalOrders > 0 
+                          ? Math.round((stats.completedOrders / stats.totalOrders) * 100) 
+                          : 0}%` 
+                      }}
+                    ></div>
                   </div>
                 </div>
               </div>

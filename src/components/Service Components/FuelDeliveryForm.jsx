@@ -45,12 +45,13 @@ const FuelDeliveryForm = () => {
   const [userCars, setUserCars] = useState([])
   const [userId, setUserId] = useState("") 
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [fuelServiceId, setFuelServiceId] = useState("") // To store the fuel service ID
   
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const markerRef = useRef(null)
   
-  // Fetch user's cars
+  // Fetch user's cars and fuel service
   useEffect(() => {
     const fetchCars = async () => {
       setIsLoading(true)
@@ -77,14 +78,30 @@ const FuelDeliveryForm = () => {
         } else {
           toast.error("Failed to retrieve cars")
         }
+        
+        // Fetch the fuel delivery service
+        const serviceResponse = await axios.get("http://localhost:3000/api/services")
+        if (serviceResponse.data.success) {
+          const fuelService = serviceResponse.data.data.find(service => 
+            service.name.toLowerCase().includes('fuel')
+          )
+          
+          if (fuelService) {
+            setFuelServiceId(fuelService._id)
+          } else {
+            toast.error("Fuel delivery service not found")
+          }
+        } else {
+          toast.error("Failed to retrieve services")
+        }
       } catch (error) {
-        console.error("Error fetching cars:", error)
+        console.error("Error fetching data:", error)
         if (error.response) {
-          toast.error(error.response.data.message || "Failed to retrieve cars")
+          toast.error(error.response.data.message || "Failed to retrieve data")
         } else if (error.request) {
           toast.error("No response from server. Please try again later.")
         } else {
-          toast.error("An error occurred while fetching cars")
+          toast.error("An error occurred while fetching data")
         }
       } finally {
         setIsLoading(false)
@@ -157,14 +174,65 @@ const FuelDeliveryForm = () => {
     setIsSubmitting(true)
     
     try {
+      let serviceId = fuelServiceId;
+      let serviceName = `${formData.fuelType.charAt(0).toUpperCase() + formData.fuelType.slice(1)} Fuel Delivery`;
+      
+      // If no fuel service ID is available, create one first
+      if (!serviceId) {
+        try {
+          // Create a new fuel delivery service
+          const newServiceResponse = await axios.post('http://localhost:3000/api/services', {
+            name: serviceName,
+            description: 'Emergency fuel delivery service for vehicles that have run out of gas.',
+            category: 'other',
+            basePrice: 30.00,
+            estimatedTime: {
+              value: 30,
+              unit: 'minutes'
+            },
+            image: 'fuel-delivery.jpg',
+            isActive: true,
+            compatibleVehicleTypes: ['sedan', 'suv', 'truck', 'van', 'hatchback', 'convertible', 'other']
+          });
+          
+          if (newServiceResponse.data.success) {
+            serviceId = newServiceResponse.data.data._id;
+            toast.success("Created fuel delivery service");
+          } else {
+            throw new Error("Failed to create fuel service");
+          }
+        } catch (serviceError) {
+          console.error('Error creating service:', serviceError);
+          toast.error('Could not create fuel delivery service. Please try again later.');
+          setIsSubmitting(false);
+          return;
+        }
+      } else {
+        // If we have a service ID, attempt to get its name
+        try {
+          const serviceResponse = await axios.get(`http://localhost:3000/api/services/${serviceId}`);
+          if (serviceResponse.data.success) {
+            serviceName = serviceResponse.data.data.name;
+          }
+        } catch (err) {
+          // If service fetch fails, just use the default name we already set
+          console.log("Could not fetch service details, using default name");
+        }
+      }
+      
       // Create the order on the server
       const response = await axios.post('http://localhost:3000/api/orders/create', {
         userId: userId,
         carId: formData.carId,
         services: [{
-          service: '65f0123456789abcdef12346', // Example service ID for fuel delivery
+          service: serviceId,
+          serviceName: serviceName,
           price: parseFloat(estimatedPrice)
         }],
+        address: {
+          fullAddress: formData.location,
+          coordinates: formData.coordinates
+        },
         totalAmount: parseFloat(estimatedPrice),
         scheduledDate: formData.scheduledDate,
         specialInstructions: formData.specialInstructions,

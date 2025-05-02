@@ -20,6 +20,8 @@ const CardDisplay = lazy(() => import('./carddisplay/page'));
 import { Toaster } from 'sonner';
 const AdminLogin = lazy(() => import('./Login/admin_login'));
 const AdminDashboard = lazy(() => import('./Dashboard/Admin_Dashboard'));
+const OrderList = lazy(() => import('./Dashboard/Order_List'));
+const OrderDetails = lazy(() => import('./Dashboard/Order_Details'));
 
 function App() {
   const location = useLocation();
@@ -29,9 +31,10 @@ function App() {
 
   useEffect(() => {
     const token = Cookies.get('token');
-    const allowedPaths = ['/signup', '/login', '/otp'];
+    const allowedPaths = ['/signup', '/login', '/otp', '/admin-login'];
+    const isAdminPath = location.pathname.startsWith('/admin');
 
-    if (!token && !allowedPaths.includes(location.pathname)) {
+    if (!token && !allowedPaths.includes(location.pathname) && !isAdminPath) {
       navigate('/signup');
     }
   }, [location.pathname, navigate]);
@@ -55,7 +58,9 @@ function App() {
         <Route path="/services" element={<ServiceListPage />} />
         <Route path="/vehicles" element={<CardDisplay />} />
         <Route path="/admin-login" element={<AdminLogin />} />
-        <Route path="/admin-dashboard" element={<AdminDashboard />} />
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin/orders" element={<OrderList />} />
+        <Route path="/admin/orders/:orderId" element={<OrderDetails />} />
       </Routes>
     </Suspense>
   );
