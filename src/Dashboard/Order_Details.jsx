@@ -398,6 +398,223 @@ const Order_Details = () => {
               </div>
             </div>
 
+            {/* Service Details */}
+            {order.services.map((item, index) => (
+              <div key={index} className="bg-gradient-to-br from-gray-900 to-[#2a2a2a] rounded-xl shadow-lg overflow-hidden border border-gray-800">
+                <div className="p-6 border-b border-gray-800">
+                  <h2 className="text-xl font-bold text-white">
+                    {item.serviceName || item.service?.name || "Unknown Service"} Details
+                  </h2>
+                </div>
+                <div className="p-6">
+                  {item.serviceDetails ? (
+                    <div className="space-y-4">
+                      {/* Car Washing Service */}
+                      {item.serviceName?.toLowerCase().includes('car wash') && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                            <h3 className="text-white font-medium mb-3">Service Information</h3>
+                            <ul className="space-y-2 text-gray-300">
+                              <li className="flex justify-between">
+                                <span className="text-gray-400">Service Type:</span>
+                                <span className="font-medium text-white capitalize">{item.serviceDetails.serviceType}</span>
+                              </li>
+                              <li className="flex justify-between">
+                                <span className="text-gray-400">Vehicle Size:</span>
+                                <span className="font-medium text-white capitalize">{item.serviceDetails.vehicleSize}</span>
+                              </li>
+                              <li className="flex justify-between">
+                                <span className="text-gray-400">Booking Type:</span>
+                                <span className="font-medium text-white capitalize">{item.serviceDetails.bookingType}</span>
+                              </li>
+                              {item.serviceDetails.bookingType === "scheduled" && item.serviceDetails.scheduledInfo && (
+                                <li className="flex justify-between">
+                                  <span className="text-gray-400">Schedule:</span>
+                                  <span className="font-medium text-white">
+                                    {item.serviceDetails.scheduledInfo.date} at {item.serviceDetails.scheduledInfo.time}
+                                  </span>
+                                </li>
+                              )}
+                              <li className="flex justify-between">
+                                <span className="text-gray-400">Est. Duration:</span>
+                                <span className="font-medium text-white">{item.serviceDetails.estimatedDuration} minutes</span>
+                              </li>
+                            </ul>
+                          </div>
+                          <div>
+                            <h3 className="text-white font-medium mb-3">Pricing Information</h3>
+                            <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+                              <div className="flex justify-between mb-2">
+                                <span className="text-gray-400">Estimated Price:</span>
+                                <span className="font-medium text-white">${item.serviceDetails.estimatedPrice}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-400">Final Price:</span>
+                                <span className="font-medium text-white">${item.price}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Engine Oil Service */}
+                      {item.serviceName?.toLowerCase().includes('oil') && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                            <h3 className="text-white font-medium mb-3">Service Information</h3>
+                            <ul className="space-y-2 text-gray-300">
+                              <li className="flex justify-between">
+                                <span className="text-gray-400">Service Type:</span>
+                                <span className="font-medium text-white capitalize">{item.serviceDetails.serviceType}</span>
+                              </li>
+                              {item.serviceDetails.oilType && (
+                                <li className="flex justify-between">
+                                  <span className="text-gray-400">Oil Type:</span>
+                                  <span className="font-medium text-white capitalize">{item.serviceDetails.oilType}</span>
+                                </li>
+                              )}
+                              <li className="flex justify-between">
+                                <span className="text-gray-400">Vehicle Type:</span>
+                                <span className="font-medium text-white capitalize">{item.serviceDetails.vehicleType}</span>
+                              </li>
+                              <li className="flex justify-between">
+                                <span className="text-gray-400">Booking Type:</span>
+                                <span className="font-medium text-white capitalize">{item.serviceDetails.bookingType}</span>
+                              </li>
+                              {item.serviceDetails.bookingType === "scheduled" && item.serviceDetails.scheduledInfo && (
+                                <li className="flex justify-between">
+                                  <span className="text-gray-400">Schedule:</span>
+                                  <span className="font-medium text-white">
+                                    {item.serviceDetails.scheduledInfo.date} at {item.serviceDetails.scheduledInfo.time}
+                                  </span>
+                                </li>
+                              )}
+                              {item.serviceDetails.additionalServices && (
+                                <li>
+                                  <span className="text-gray-400 block mb-1">Additional Services:</span>
+                                  <ul className="ml-4 space-y-1">
+                                    {item.serviceDetails.additionalServices.filterChange && (
+                                      <li className="text-green-400">✓ Oil Filter Change</li>
+                                    )}
+                                    {item.serviceDetails.additionalServices.fluidCheck && (
+                                      <li className="text-green-400">✓ Fluid Check & Top-up</li>
+                                    )}
+                                    {!item.serviceDetails.additionalServices.filterChange && !item.serviceDetails.additionalServices.fluidCheck && (
+                                      <li className="text-gray-400">No additional services</li>
+                                    )}
+                                  </ul>
+                                </li>
+                              )}
+                              <li className="flex justify-between">
+                                <span className="text-gray-400">Est. Duration:</span>
+                                <span className="font-medium text-white">{item.serviceDetails.estimatedDuration} minutes</span>
+                              </li>
+                            </ul>
+                          </div>
+                          <div>
+                            <h3 className="text-white font-medium mb-3">Pricing Information</h3>
+                            <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+                              <div className="flex justify-between mb-2">
+                                <span className="text-gray-400">Estimated Price:</span>
+                                <span className="font-medium text-white">${item.serviceDetails.estimatedPrice}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-400">Final Price:</span>
+                                <span className="font-medium text-white">${item.price}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Emergency Rescue Service */}
+                      {(item.serviceName?.toLowerCase().includes('emergency') || item.serviceName?.toLowerCase().includes('rescue')) && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                            <h3 className="text-white font-medium mb-3">Emergency Information</h3>
+                            <ul className="space-y-2 text-gray-300">
+                              <li className="flex justify-between">
+                                <span className="text-gray-400">Service Type:</span>
+                                <span className="font-medium text-white capitalize">{item.serviceDetails.serviceType}</span>
+                              </li>
+                              <li className="flex justify-between">
+                                <span className="text-gray-400">Vehicle Type:</span>
+                                <span className="font-medium text-white capitalize">{item.serviceDetails.vehicleType}</span>
+                              </li>
+                              <li className="flex justify-between">
+                                <span className="text-gray-400">Vehicle Accessible:</span>
+                                <span className="font-medium text-white">{item.serviceDetails.isVehicleAccessible === "yes" ? "Yes" : "No, difficult location"}</span>
+                              </li>
+                              {item.serviceDetails.emergencyInfo && (
+                                <>
+                                  <li className="flex justify-between">
+                                    <span className="text-gray-400">Est. Response Time:</span>
+                                    <span className="font-medium text-white">{item.serviceDetails.emergencyInfo.estimatedResponse} minutes</span>
+                                  </li>
+                                  {item.serviceDetails.emergencyInfo.description && (
+                                    <li>
+                                      <span className="text-gray-400 block mb-1">Emergency Description:</span>
+                                      <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700 mt-1">
+                                        <p className="text-white text-sm">{item.serviceDetails.emergencyInfo.description}</p>
+                                      </div>
+                                    </li>
+                                  )}
+                                </>
+                              )}
+                              {item.serviceDetails.contactInfo && (
+                                <>
+                                  <li className="flex justify-between">
+                                    <span className="text-gray-400">Contact Name:</span>
+                                    <span className="font-medium text-white">{item.serviceDetails.contactInfo.name}</span>
+                                  </li>
+                                  <li className="flex justify-between">
+                                    <span className="text-gray-400">Contact Phone:</span>
+                                    <span className="font-medium text-white">{item.serviceDetails.contactInfo.phone}</span>
+                                  </li>
+                                </>
+                              )}
+                            </ul>
+                          </div>
+                          <div>
+                            <h3 className="text-white font-medium mb-3">Pricing Information</h3>
+                            <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+                              <div className="flex justify-between mb-2">
+                                <span className="text-gray-400">Estimated Price:</span>
+                                <span className="font-medium text-white">${item.serviceDetails.estimatedPrice}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-400">Final Price:</span>
+                                <span className="font-medium text-white">${item.price}</span>
+                              </div>
+                            </div>
+                            <div className="mt-4 p-3 bg-red-600/10 border border-red-500/30 rounded-lg">
+                              <p className="text-sm text-red-300 font-medium">This is an emergency service request.</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Default case if service type is not recognized */}
+                      {!item.serviceName?.toLowerCase().includes('car wash') && 
+                       !item.serviceName?.toLowerCase().includes('oil') && 
+                       !item.serviceName?.toLowerCase().includes('emergency') && 
+                       !item.serviceName?.toLowerCase().includes('rescue') && (
+                        <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+                          <pre className="text-white text-sm overflow-auto">
+                            {JSON.stringify(item.serviceDetails, null, 2)}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="bg-amber-600/10 border border-amber-500/30 rounded-lg p-4">
+                      <p className="text-amber-300 text-sm">No detailed service information available for this order.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+
             {/* Admin Notes */}
             <div className="bg-gradient-to-br from-gray-900 to-[#2a2a2a] rounded-xl shadow-lg overflow-hidden border border-gray-800">
               <div className="p-6 border-b border-gray-800">

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   Check,
   ChevronLeft,
@@ -17,23 +17,46 @@ import {
   Info,
   MessageSquare,
   User,
+  Search
 } from "lucide-react"
+import mapboxgl from 'mapbox-gl'
+import 'mapbox-gl/dist/mapbox-gl.css'
+import axios from 'axios'
+import { jwtDecode } from 'jwt-decode'
+import Cookies from 'js-cookie'
+import toast, { Toaster } from 'react-hot-toast'
+
+// Set Mapbox access token from environment variable
+mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN
 
 const EmergencyRescueForm = () => {
   const [formData, setFormData] = useState({
     serviceType: "towing",
     vehicleType: "sedan",
     location: "",
+    coordinates: { lng: null, lat: null },
     description: "",
     name: "",
     phone: "",
     isVehicleAccessible: "yes",
+    carId: ""
   })
 
   const [currentStep, setCurrentStep] = useState(1)
   const [estimatedTime, setEstimatedTime] = useState("")
+  const [estimatedPrice, setEstimatedPrice] = useState(0)
   const [trackingId, setTrackingId] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [searchResults, setSearchResults] = useState([])
+  const [userCars, setUserCars] = useState([])
+  const [userId, setUserId] = useState("") 
+  const [rescueServiceId, setRescueServiceId] = useState("") // To store the emergency rescue service ID
+  
+  const mapRef = useRef(null)
+  const mapInstanceRef = useRef(null)
+  const markerRef = useRef(null)
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -52,34 +75,164 @@ const EmergencyRescueForm = () => {
 
     return baseTimes[formData.serviceType]
   }
+  
+  const calculatePrice = () => {
+    // Base prices for emergency services
+    const basePrices = {
+      towing: 80,
+      jumpStart: 45,
+      lockout: 60,
+      flatTire: 55,
+      fuelDelivery: 65,
+    }
+    
+    // Apply distance surcharges or vehicle type adjustments could be added here
+    let price = basePrices[formData.serviceType]
+    
+    // Vehicle type surcharges
+    if (formData.vehicleType === "suv") price += 15
+    if (formData.vehicleType === "truck") price += 25
+    
+    // Accessibility surcharge
+    if (formData.isVehicleAccessible === "no") price += 20
+    
+    return price
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault()
     setIsLoading(true)
 
-    // Simulate API call
+    // Calculate prices and times
     setTimeout(() => {
       const time = calculateEstimatedTime()
+      const price = calculatePrice()
       setEstimatedTime(time)
+      setEstimatedPrice(price)
       setCurrentStep(2)
       setIsLoading(false)
     }, 1500)
   }
 
-  const handleConfirmRequest = () => {
-    setIsLoading(true)
-
-    // Simulate API call
-    setTimeout(() => {
-      // Generate random tracking ID
-      setTrackingId(
-        `ER-${Math.floor(Math.random() * 10000)
-          .toString()
-          .padStart(4, "0")}`,
-      )
-      setCurrentStep(3)
-      setIsLoading(false)
-    }, 1500)
+  const handleConfirmRequest = async () => {
+    // Verify user is authenticated
+    const token = Cookies.get("token")
+    if (!token) {
+      toast.error("You must be logged in to place an emergency request.")
+      return
+    }
+    
+    // Check if car is selected - only if we have user cars available
+    if (userCars.length > 0 && !formData.carId) {
+      toast.error("Please select a vehicle for this service")
+      return
+    }
+    
+    setIsSubmitting(true)
+    
+    try {
+      let serviceId = rescueServiceId;
+      let serviceName = `Emergency ${formData.serviceType.charAt(0).toUpperCase() + formData.serviceType.slice(1)}`;
+      
+      // If no rescue service ID is available, create one first
+      if (!serviceId) {
+        try {
+          // Create a new emergency rescue service
+          const newServiceResponse = await axios.post('http://localhost:3000/api/services', {
+            name: serviceName,
+            description: 'Emergency rescue services including towing, jump start, lockout assistance, flat tire help, and fuel delivery.',
+            category: 'emergency',
+            basePrice: calculatePrice(),
+            estimatedTime: {
+              value: parseInt(estimatedTime.split('-')[0]),
+              unit: 'minutes'
+            },
+            image: 'emergency-service.jpg',
+            isActive: true,
+            isEmergency: true,
+            compatibleVehicleTypes: ['sedan', 'suv', 'truck', 'van', 'hatchback', 'convertible', 'other']
+          });
+          
+          if (newServiceResponse.data.success) {
+            serviceId = newServiceResponse.data.data._id;
+            toast.success("Created emergency service");
+          } else {
+            throw new Error("Failed to create emergency service");
+          }
+        } catch (serviceError) {
+          console.error('Error creating service:', serviceError);
+          toast.error('Could not create emergency service. Please try again later.');
+          setIsSubmitting(false);
+          return;
+        }
+      } else {
+        // If we have a service ID, attempt to get its name
+        try {
+          const serviceResponse = await axios.get(`http://localhost:3000/api/services/${serviceId}`);
+          if (serviceResponse.data.success) {
+            serviceName = serviceResponse.data.data.name;
+          }
+        } catch (err) {
+          // If service fetch fails, just use the default name we already set
+          console.log("Could not fetch service details, using default name");
+        }
+      }
+      
+      // Extract service details for the admin panel
+      const serviceDetails = {
+        serviceType: formData.serviceType,
+        vehicleType: formData.vehicleType,
+        isVehicleAccessible: formData.isVehicleAccessible,
+        emergencyInfo: {
+          description: formData.description,
+          estimatedResponse: estimatedTime
+        },
+        contactInfo: {
+          name: formData.name,
+          phone: formData.phone
+        },
+        estimatedPrice: estimatedPrice
+      };
+      
+      // Create the order on the server
+      const response = await axios.post('http://localhost:3000/api/orders/create', {
+        userId: userId,
+        carId: formData.carId || null, // Allow nullable for emergencies
+        services: [{
+          service: serviceId,
+          serviceName: serviceName,
+          price: parseFloat(estimatedPrice),
+          serviceDetails: serviceDetails
+        }],
+        address: {
+          fullAddress: formData.location,
+          coordinates: formData.coordinates
+        },
+        totalAmount: parseFloat(estimatedPrice),
+        scheduledDate: new Date(), // Emergency services are always immediate
+        specialInstructions: formData.description,
+        contactName: formData.name,
+        contactPhone: formData.phone,
+        isEmergency: true,
+        paymentMethod: 'credit_card', // Default payment method
+        paymentStatus: 'pending' // For emergencies, payment is handled later
+      });
+      
+      if (response.data.success) {
+        toast.success("Your emergency request has been submitted!");
+        // Generate tracking ID and show confirmation screen
+        const trackingId = `ER-${Math.floor(Math.random() * 10000).toString().padStart(4, "0")}`;
+        setTrackingId(trackingId);
+        setCurrentStep(3);
+      } else {
+        throw new Error(response.data.message || 'Failed to submit emergency request');
+      }
+    } catch (error) {
+      console.error('Error submitting emergency request:', error);
+      toast.error(error.response?.data?.message || 'Failed to submit request. Please try again or call customer service.');
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   const handleNewRequest = () => {
@@ -87,13 +240,247 @@ const EmergencyRescueForm = () => {
       serviceType: "towing",
       vehicleType: "sedan",
       location: "",
+      coordinates: { lng: null, lat: null },
       description: "",
       name: "",
       phone: "",
       isVehicleAccessible: "yes",
+      carId: ""
     })
     setCurrentStep(1)
   }
+
+  // Fetch user's cars and rescue service 
+  useEffect(() => {
+    const fetchUserData = async () => {
+      setIsLoading(true)
+      const token = Cookies.get("token")
+      if (token) {
+        try {
+          const decodedToken = jwtDecode(token)
+          const userId = decodedToken._id
+          setUserId(userId)
+      
+          // Fetch user's cars if they're logged in
+          const response = await axios.get(`http://localhost:3000/api/cars/user/${userId}`)
+          if (response.data.success) {
+            setUserCars(response.data.data)
+          } else if (response.data.status) {
+            // Fallback for API that might use status instead of success
+            setUserCars(response.data.data)
+          }
+          
+          // Fetch emergency rescue services
+          const serviceResponse = await axios.get("http://localhost:3000/api/services")
+          if (serviceResponse.data.success) {
+            const rescueService = serviceResponse.data.data.find(service => 
+              service.name.toLowerCase().includes('emergency') || 
+              service.category === 'emergency'
+            )
+            
+            if (rescueService) {
+              setRescueServiceId(rescueService._id)
+            } else {
+              console.log("Emergency service not found, will create one during order")
+            }
+          } else {
+            console.log("Failed to retrieve services")
+          }
+        } catch (error) {
+          console.error("Error fetching user data:", error)
+        }
+      }
+      setIsLoading(false)
+    }
+  
+    fetchUserData()
+  }, []);
+
+  // Initialize map when component mounts
+  useEffect(() => {
+    if (!mapRef.current || mapInstanceRef.current) return
+    
+    // Default location
+    const defaultLocation = { lng: -74.0060, lat: 40.7128 }; // New York City
+    
+    // Initialize the map
+    mapInstanceRef.current = new mapboxgl.Map({
+      container: mapRef.current,
+      style: 'mapbox://styles/mapbox/dark-v11',
+      center: [defaultLocation.lng, defaultLocation.lat],
+      zoom: 13
+    });
+    
+    // Add navigation controls
+    mapInstanceRef.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    
+    // Add marker
+    const markerElement = document.createElement('div');
+    markerElement.className = 'marker';
+    markerElement.style.width = '30px';
+    markerElement.style.height = '30px';
+    markerElement.style.backgroundImage = 'url("https://docs.mapbox.com/mapbox-gl-js/assets/pin.svg")';
+    markerElement.style.backgroundSize = 'cover';
+    markerElement.style.cursor = 'pointer';
+    
+    markerRef.current = new mapboxgl.Marker({ 
+      element: markerElement,
+      draggable: true 
+    })
+      .setLngLat([defaultLocation.lng, defaultLocation.lat])
+      .addTo(mapInstanceRef.current);
+    
+    // Add event listener for when the marker is dragged
+    markerRef.current.on('dragend', () => {
+      const lngLat = markerRef.current.getLngLat();
+      
+      // Update form data with coordinates
+      setFormData(prevData => ({
+        ...prevData,
+        coordinates: { lng: lngLat.lng, lat: lngLat.lat }
+      }));
+      
+      // Get address from coordinates (reverse geocoding)
+      fetchLocationAddress(lngLat.lng, lngLat.lat);
+    });
+    
+    // Add event listener for map click
+    mapInstanceRef.current.on('click', (e) => {
+      // Update marker position
+      markerRef.current.setLngLat([e.lngLat.lng, e.lngLat.lat]);
+      
+      // Update form data with coordinates
+      setFormData(prevData => ({
+        ...prevData,
+        coordinates: { lng: e.lngLat.lng, lat: e.lngLat.lat }
+      }));
+      
+      // Get address from coordinates (reverse geocoding)
+      fetchLocationAddress(e.lngLat.lng, e.lngLat.lat);
+    });
+    
+    // Try to get user's current location
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const currentLocation = {
+            lng: position.coords.longitude,
+            lat: position.coords.latitude
+          };
+          
+          // Update map and marker
+          mapInstanceRef.current.flyTo({
+            center: [currentLocation.lng, currentLocation.lat],
+            essential: true
+          });
+          
+          markerRef.current.setLngLat([currentLocation.lng, currentLocation.lat]);
+          
+          // Update form data with coordinates
+          setFormData(prevData => ({
+            ...prevData,
+            coordinates: currentLocation
+          }));
+          
+          // Get address from coordinates (reverse geocoding)
+          fetchLocationAddress(currentLocation.lng, currentLocation.lat);
+        },
+        () => {
+          // Handle location permission denied
+          console.log('Location permission denied');
+        }
+      );
+    }
+    
+    // Cleanup function
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, []);
+
+  // Function to fetch address from coordinates using Mapbox Geocoding API
+  const fetchLocationAddress = async (lng, lat) => {
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxgl.accessToken}`
+      );
+      const data = await response.json();
+      
+      if (data.features && data.features.length > 0) {
+        const address = data.features[0].place_name;
+        setFormData(prevData => ({
+          ...prevData,
+          location: address
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching address:', error);
+    }
+  };
+
+  // Function to search for locations
+  const searchLocation = async (query) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${mapboxgl.accessToken}&limit=5`
+      );
+      const data = await response.json();
+      
+      if (data.features) {
+        setSearchResults(data.features);
+      }
+    } catch (error) {
+      console.error('Error searching locations:', error);
+    }
+  };
+
+  // Debounced search
+  useEffect(() => {
+    const delayDebounce = setTimeout(() => {
+      if (searchQuery) {
+        searchLocation(searchQuery);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounce);
+  }, [searchQuery]);
+
+  // Handle search input change
+  const handleSearchInputChange = (e) => {
+    setSearchQuery(e.target.value);
+  };
+
+  // Handle search result selection
+  const handleSearchResultSelect = (result) => {
+    // Update map center
+    mapInstanceRef.current.flyTo({
+      center: result.center,
+      zoom: 15,
+      essential: true
+    });
+    
+    // Update marker
+    markerRef.current.setLngLat(result.center);
+    
+    // Update form data
+    setFormData(prevData => ({
+      ...prevData,
+      location: result.place_name,
+      coordinates: { lng: result.center[0], lat: result.center[1] }
+    }));
+    
+    // Clear search
+    setSearchQuery('');
+    setSearchResults([]);
+  };
 
   const serviceDescriptions = {
     towing: "Vehicle transport to a repair facility or location of your choice.",
@@ -332,25 +719,95 @@ const EmergencyRescueForm = () => {
                   </div>
                 </div>
 
-                {/* Current Location */}
+                {/* Emergency Location */}
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-gray-300 text-sm font-medium">
                     <MapPin size={16} className="text-red-400" />
-                    Current Location <span className="text-red-400">*</span>
+                    Your Location <span className="text-red-400">*</span>
                   </label>
-                  <textarea
-                    name="location"
-                    value={formData.location}
-                    onChange={handleChange}
-                    className="w-full p-3 rounded-lg bg-gray-800/50 text-white border border-gray-700 focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition-all duration-200"
-                    placeholder="Enter your current location or address as precisely as possible"
-                    rows={3}
-                    required
-                  ></textarea>
-                  <p className="text-xs text-gray-400">
-                    Include landmarks, cross streets, or GPS coordinates if available.
-                  </p>
+                  
+                  <div className="space-y-4">
+                    {/* Location search */}
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={handleSearchInputChange}
+                        className="w-full p-4 pl-12 rounded-lg bg-gray-800/50 text-white border border-gray-700 focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition-all duration-200"
+                        placeholder="Search for your location"
+                      />
+                      <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                        <Search className="h-5 w-5 text-gray-400" />
+                      </div>
+                      
+                      {/* Search results dropdown */}
+                      {searchResults.length > 0 && (
+                        <div className="absolute z-10 mt-1 w-full bg-gray-800 border border-gray-700 rounded-lg shadow-xl max-h-60 overflow-auto">
+                          {searchResults.map((result) => (
+                            <div
+                              key={result.id}
+                              className="p-3 hover:bg-gray-700 cursor-pointer text-white text-sm border-b border-gray-700 last:border-b-0"
+                              onClick={() => handleSearchResultSelect(result)}
+                            >
+                              <div className="font-medium">{result.text}</div>
+                              <div className="text-gray-400 text-xs truncate">{result.place_name}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Map container */}
+                    <div 
+                      ref={mapRef} 
+                      className="w-full h-[300px] rounded-lg overflow-hidden border border-gray-700"
+                    ></div>
+                    
+                    {/* Selected location display */}
+                    <div className="bg-gray-800/50 p-3 rounded-lg border border-gray-700">
+                      <p className="text-sm text-gray-300 mb-1">Selected Location:</p>
+                      <p className="text-white font-medium break-words">
+                        {formData.location || "No location selected"}
+                      </p>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Select Car - only show if user has cars */}
+                {userCars.length > 0 && (
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-gray-300 text-sm font-medium">
+                      <Car size={16} className="text-red-400" />
+                      Select Your Vehicle <span className="text-red-400">*</span>
+                    </label>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {userCars.map(car => (
+                        <div
+                          key={car._id}
+                          className={`p-4 rounded-lg border ${
+                            formData.carId === car._id
+                              ? "border-red-500 bg-red-600/10"
+                              : "border-gray-700 bg-gray-800/50"
+                          } cursor-pointer transition-all duration-200 hover:border-red-400`}
+                          onClick={() => setFormData({ ...formData, carId: car._id })}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium text-white">{car.year} {car.make} {car.model}</p>
+                              <p className="text-sm text-gray-400">{car.licensePlate || "No plate"}</p>
+                            </div>
+                            {formData.carId === car._id && (
+                              <div className="h-6 w-6 bg-red-600 rounded-full flex items-center justify-center">
+                                <Check className="h-4 w-4 text-white" />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Description */}
                 <div className="space-y-2">
@@ -659,6 +1116,8 @@ const EmergencyRescueForm = () => {
           )}
         </div>
       </div>
+
+      <Toaster position="top-right" />
     </div>
   )
 }

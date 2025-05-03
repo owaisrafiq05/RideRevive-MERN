@@ -1,7 +1,16 @@
 "use client"
 
-import { useState } from "react"
-import { Check, ChevronLeft, ArrowRight, Battery, Calendar, Clock, Car, MapPin, Zap, Gauge, Wrench, Info, DollarSign, CreditCard } from 'lucide-react'
+import { useState, useEffect, useRef } from "react"
+import { Check, ChevronLeft, ArrowRight, Battery, Calendar, Clock, Car, MapPin, Zap, Gauge, Wrench, Info, DollarSign, CreditCard, Search } from 'lucide-react'
+import mapboxgl from 'mapbox-gl'
+import 'mapbox-gl/dist/mapbox-gl.css'
+import axios from 'axios'
+import { jwtDecode } from 'jwt-decode'
+import Cookies from 'js-cookie'
+import toast, { Toaster } from 'react-hot-toast'
+
+// Set Mapbox access token from environment variable
+mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN
 
 const BatteryServicesForm = () => {
   const [formData, setFormData] = useState({
@@ -12,15 +21,27 @@ const BatteryServicesForm = () => {
     scheduledDate: "",
     scheduledTime: "",
     location: "",
+    coordinates: { lng: null, lat: null },
     addJumpStart: false,
     addInspection: false,
     notes: "",
+    carId: ""
   })
 
   const [currentStep, setCurrentStep] = useState(1)
   const [estimatedPrice, setEstimatedPrice] = useState(0)
   const [estimatedDuration, setEstimatedDuration] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [searchResults, setSearchResults] = useState([])
+  const [userCars, setUserCars] = useState([])
+  const [userId, setUserId] = useState("") 
+  const [batteryServiceId, setBatteryServiceId] = useState("") // To store the battery service ID
+  
+  const mapRef = useRef(null)
+  const mapInstanceRef = useRef(null)
+  const markerRef = useRef(null)
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
@@ -96,13 +117,123 @@ const BatteryServicesForm = () => {
   }
 
   const handleProceedToCheckout = () => {
-    setIsLoading(true)
+    setCurrentStep(3)
+  }
 
-    // Simulate API call
-    setTimeout(() => {
-      setCurrentStep(3)
-      setIsLoading(false)
-    }, 1500)
+  const handleConfirmOrder = async () => {
+    // Verify user is authenticated
+    const token = Cookies.get("token")
+    if (!token) {
+      toast.error("You must be logged in to place an order.")
+      return
+    }
+    
+    // Verify car is selected
+    if (!formData.carId) {
+      toast.error("Please select a vehicle for this service")
+      return
+    }
+    
+    setIsSubmitting(true)
+    
+    try {
+      let serviceId = batteryServiceId;
+      let serviceName = `${formData.serviceType.charAt(0).toUpperCase() + formData.serviceType.slice(1)} Battery Service`;
+      
+      // If no battery service ID is available, create one first
+      if (!serviceId) {
+        try {
+          // Create a new battery service
+          const newServiceResponse = await axios.post('http://localhost:3000/api/services', {
+            name: serviceName,
+            description: 'Battery services including replacement, charging, and diagnostics.',
+            category: 'battery',
+            basePrice: calculatePrice(),
+            estimatedTime: {
+              value: parseInt(estimatedDuration.split('-')[0]),
+              unit: 'minutes'
+            },
+            image: 'battery-service.jpg',
+            isActive: true,
+            compatibleVehicleTypes: ['sedan', 'suv', 'truck', 'van', 'hatchback', 'convertible', 'other']
+          });
+          
+          if (newServiceResponse.data.success) {
+            serviceId = newServiceResponse.data.data._id;
+            toast.success("Created battery service");
+          } else {
+            throw new Error("Failed to create battery service");
+          }
+        } catch (serviceError) {
+          console.error('Error creating service:', serviceError);
+          toast.error('Could not create battery service. Please try again later.');
+          setIsSubmitting(false);
+          return;
+        }
+      }
+      
+      // If we have a service ID, attempt to get its name
+      try {
+        const serviceResponse = await axios.get(`http://localhost:3000/api/services/${serviceId}`);
+        if (serviceResponse.data.success) {
+          serviceName = serviceResponse.data.data.name;
+        }
+      } catch (err) {
+        // If service fetch fails, just use the default name we already set
+        console.log("Could not fetch service details, using default name");
+      }
+      
+      // Extract service details for the admin panel
+      const serviceDetails = {
+        serviceType: formData.serviceType,
+        batteryType: formData.batteryType,
+        vehicleType: formData.vehicleType,
+        bookingType: formData.bookingType,
+        scheduledInfo: formData.bookingType === "scheduled" ? {
+          date: formData.scheduledDate,
+          time: formData.scheduledTime
+        } : null,
+        warrantyOption: formData.warrantyOption,
+        estimatedDuration: estimatedDuration,
+        estimatedPrice: estimatedPrice
+      };
+      
+      // Create the order on the server
+      const response = await axios.post('http://localhost:3000/api/orders/create', {
+        userId: userId,
+        carId: formData.carId,
+        services: [{
+          service: serviceId,
+          serviceName: serviceName,
+          price: parseFloat(estimatedPrice),
+          serviceDetails: serviceDetails
+        }],
+        address: {
+          fullAddress: formData.location,
+          coordinates: formData.coordinates
+        },
+        totalAmount: parseFloat(estimatedPrice),
+        scheduledDate: formData.bookingType === "scheduled" ? 
+          new Date(`${formData.scheduledDate}T${formData.scheduledTime}`) : 
+          new Date(),
+        specialInstructions: formData.notes,
+        paymentMethod: 'credit_card', // Default payment method
+        paymentStatus: 'paid' // For simplicity, we're marking it as paid
+      });
+      
+      if (response.data.success) {
+        toast.success("Your order has been placed successfully!");
+        // Show order completion screen
+        setCurrentStep(4);
+      } else {
+        throw new Error(response.data.message || 'Failed to place order');
+      }
+    } catch (error) {
+      console.error('Error placing order:', error);
+      toast.error(error.response?.data?.message || 'Failed to place order. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   const handleNewBooking = () => {
@@ -114,9 +245,11 @@ const BatteryServicesForm = () => {
       scheduledDate: "",
       scheduledTime: "",
       location: "",
+      coordinates: { lng: null, lat: null },
       addJumpStart: false,
       addInspection: false,
       notes: "",
+      carId: ""
     })
     setCurrentStep(1)
   }
@@ -138,6 +271,252 @@ const BatteryServicesForm = () => {
     premium: "Enhanced performance battery with longer lifespan and better cold weather starting.",
     heavyDuty: "Heavy-duty battery for vehicles with high electrical demands or commercial use.",
   }
+
+  // Fetch user's cars and battery service
+  useEffect(() => {
+    const fetchCars = async () => {
+      setIsLoading(true)
+      const token = Cookies.get("token")
+      if (!token) {
+        toast.error("User not authenticated.")
+        setIsLoading(false)
+        return
+      }
+  
+      const decodedToken = jwtDecode(token)
+      const userId = decodedToken._id
+      setUserId(userId)
+  
+      try {
+        const response = await axios.get(`http://localhost:3000/api/cars/user/${userId}`)
+        if (response.data.success) {
+          setUserCars(response.data.data)
+          toast.success("Cars retrieved successfully!")
+        } else if (response.data.status) {
+          // Fallback for API that might use status instead of success
+          setUserCars(response.data.data)
+          toast.success("Cars retrieved successfully!")
+        } else {
+          toast.error("Failed to retrieve cars")
+        }
+        
+        // Fetch the battery service
+        const serviceResponse = await axios.get("http://localhost:3000/api/services")
+        if (serviceResponse.data.success) {
+          const batteryService = serviceResponse.data.data.find(service => 
+            service.name.toLowerCase().includes('battery')
+          )
+          
+          if (batteryService) {
+            setBatteryServiceId(batteryService._id)
+          } else {
+            console.log("Battery service not found, will create one during order")
+          }
+        } else {
+          console.log("Failed to retrieve services")
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error)
+        if (error.response) {
+          toast.error(error.response.data.message || "Failed to retrieve data")
+        } else if (error.request) {
+          toast.error("No response from server. Please try again later.")
+        } else {
+          toast.error("An error occurred while fetching data")
+        }
+      } finally {
+        setIsLoading(false)
+      }
+    }
+  
+    fetchCars()
+  }, []);
+
+  // Initialize map when component mounts
+  useEffect(() => {
+    if (!mapRef.current || mapInstanceRef.current) return
+    
+    // Default location
+    const defaultLocation = { lng: -74.0060, lat: 40.7128 }; // New York City
+    
+    // Initialize the map
+    mapInstanceRef.current = new mapboxgl.Map({
+      container: mapRef.current,
+      style: 'mapbox://styles/mapbox/dark-v11',
+      center: [defaultLocation.lng, defaultLocation.lat],
+      zoom: 13
+    });
+    
+    // Add navigation controls
+    mapInstanceRef.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    
+    // Add marker
+    const markerElement = document.createElement('div');
+    markerElement.className = 'marker';
+    markerElement.style.width = '30px';
+    markerElement.style.height = '30px';
+    markerElement.style.backgroundImage = 'url("https://docs.mapbox.com/mapbox-gl-js/assets/pin.svg")';
+    markerElement.style.backgroundSize = 'cover';
+    markerElement.style.cursor = 'pointer';
+    
+    markerRef.current = new mapboxgl.Marker({ 
+      element: markerElement,
+      draggable: true 
+    })
+      .setLngLat([defaultLocation.lng, defaultLocation.lat])
+      .addTo(mapInstanceRef.current);
+    
+    // Add event listener for when the marker is dragged
+    markerRef.current.on('dragend', () => {
+      const lngLat = markerRef.current.getLngLat();
+      
+      // Update form data with coordinates
+      setFormData(prevData => ({
+        ...prevData,
+        coordinates: { lng: lngLat.lng, lat: lngLat.lat }
+      }));
+      
+      // Get address from coordinates (reverse geocoding)
+      fetchLocationAddress(lngLat.lng, lngLat.lat);
+    });
+    
+    // Add event listener for map click
+    mapInstanceRef.current.on('click', (e) => {
+      // Update marker position
+      markerRef.current.setLngLat([e.lngLat.lng, e.lngLat.lat]);
+      
+      // Update form data with coordinates
+      setFormData(prevData => ({
+        ...prevData,
+        coordinates: { lng: e.lngLat.lng, lat: e.lngLat.lat }
+      }));
+      
+      // Get address from coordinates (reverse geocoding)
+      fetchLocationAddress(e.lngLat.lng, e.lngLat.lat);
+    });
+    
+    // Try to get user's current location
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const currentLocation = {
+            lng: position.coords.longitude,
+            lat: position.coords.latitude
+          };
+          
+          // Update map and marker
+          mapInstanceRef.current.flyTo({
+            center: [currentLocation.lng, currentLocation.lat],
+            essential: true
+          });
+          
+          markerRef.current.setLngLat([currentLocation.lng, currentLocation.lat]);
+          
+          // Update form data with coordinates
+          setFormData(prevData => ({
+            ...prevData,
+            coordinates: currentLocation
+          }));
+          
+          // Get address from coordinates (reverse geocoding)
+          fetchLocationAddress(currentLocation.lng, currentLocation.lat);
+        },
+        () => {
+          // Handle location permission denied
+          console.log('Location permission denied');
+        }
+      );
+    }
+    
+    // Cleanup function
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, []);
+
+  // Function to fetch address from coordinates using Mapbox Geocoding API
+  const fetchLocationAddress = async (lng, lat) => {
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxgl.accessToken}`
+      );
+      const data = await response.json();
+      
+      if (data.features && data.features.length > 0) {
+        const address = data.features[0].place_name;
+        setFormData(prevData => ({
+          ...prevData,
+          location: address
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching address:', error);
+    }
+  };
+
+  // Function to search for locations
+  const searchLocation = async (query) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${mapboxgl.accessToken}&limit=5`
+      );
+      const data = await response.json();
+      
+      if (data.features) {
+        setSearchResults(data.features);
+      }
+    } catch (error) {
+      console.error('Error searching locations:', error);
+    }
+  };
+
+  // Debounced search
+  useEffect(() => {
+    const delayDebounce = setTimeout(() => {
+      if (searchQuery) {
+        searchLocation(searchQuery);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounce);
+  }, [searchQuery]);
+
+  // Handle search input change
+  const handleSearchInputChange = (e) => {
+    setSearchQuery(e.target.value);
+  };
+
+  // Handle search result selection
+  const handleSearchResultSelect = (result) => {
+    // Update map center
+    mapInstanceRef.current.flyTo({
+      center: result.center,
+      zoom: 15,
+      essential: true
+    });
+    
+    // Update marker
+    markerRef.current.setLngLat(result.center);
+    
+    // Update form data
+    setFormData(prevData => ({
+      ...prevData,
+      location: result.place_name,
+      coordinates: { lng: result.center[0], lat: result.center[1] }
+    }));
+    
+    // Clear search
+    setSearchQuery('');
+    setSearchResults([]);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#1a1a1a] to-[#242424] text-white flex flex-col flex-1">
@@ -741,14 +1120,151 @@ const BatteryServicesForm = () => {
             </div>
           )}
 
-          {/* Step 3: Checkout Confirmation */}
+          {/* Step 3: Checkout */}
           {currentStep === 3 && (
+            <div className="bg-gradient-to-br from-gray-900 to-[#2a2a2a] p-8 rounded-xl border border-gray-800 shadow-xl">
+              <div className="flex items-center gap-3 mb-6">
+                <h2 className="text-xl font-semibold text-white">Complete Your Order</h2>
+              </div>
+
+              <div className="space-y-6">
+                <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-gray-300">Service Type:</span>
+                    <div className="flex items-center gap-2">
+                      <div className="bg-green-600/20 p-1.5 rounded-md">{serviceIcons[formData.serviceType]}</div>
+                      <span className="font-medium text-white capitalize">
+                        {formData.serviceType}
+                      </span>
+                    </div>
+                  </div>
+
+                  {formData.serviceType === "replacement" && (
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-gray-300">Battery Type:</span>
+                      <span className="font-medium text-white capitalize">{formData.batteryType}</span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-gray-300">Vehicle Type:</span>
+                    <span className="font-medium text-white capitalize">{formData.vehicleType}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-gray-300">Booking Type:</span>
+                    <span className="font-medium text-white capitalize">{formData.bookingType}</span>
+                  </div>
+
+                  {formData.bookingType === "scheduled" && (
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-gray-300">Scheduled Time:</span>
+                      <span className="font-medium text-white">
+                        {formData.scheduledDate} at {formData.scheduledTime}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="flex items-start justify-between mb-4">
+                    <span className="text-gray-300">Service Location:</span>
+                    <span className="font-medium text-white max-w-[250px] text-right">{formData.location}</span>
+                  </div>
+
+                  {formData.addJumpStart && (
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-gray-300">Add Jump Start:</span>
+                      <span className="font-medium text-white">Yes (+$25)</span>
+                    </div>
+                  )}
+
+                  {formData.addInspection && (
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-gray-300">Add Electrical Inspection:</span>
+                      <span className="font-medium text-white">Yes (+$35)</span>
+                    </div>
+                  )}
+
+                  {formData.notes && (
+                    <div className="flex items-start justify-between mb-4">
+                      <span className="text-gray-300">Notes:</span>
+                      <span className="font-medium text-white max-w-[250px] text-right">{formData.notes}</span>
+                    </div>
+                  )}
+
+                  <div className="border-t border-gray-700 my-4"></div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-medium text-white">Total:</span>
+                    <span className="text-xl font-bold text-green-300">${estimatedPrice}</span>
+                  </div>
+                </div>
+
+                <div className="bg-green-600/10 border border-green-500/30 rounded-lg p-4 flex items-start gap-3">
+                  <Info className="h-5 w-5 text-green-400 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-gray-300">
+                    Your order details are shown above. Click "Confirm Order" to proceed with payment and schedule your service.
+                  </p>
+                </div>
+
+                <div className="pt-6 border-t border-gray-700 flex justify-between gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(2)}
+                    className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg 
+                            transition-colors duration-200 font-medium flex items-center gap-2"
+                  >
+                    <ChevronLeft size={18} /> Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmOrder}
+                    disabled={isSubmitting}
+                    className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg 
+                            transition-colors duration-200 font-medium flex items-center justify-center gap-2 min-w-[180px]"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <svg
+                          className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        Confirm Order <ArrowRight size={18} />
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: Order Confirmation */}
+          {currentStep === 4 && (
             <div className="bg-gradient-to-br from-gray-900 to-[#2a2a2a] p-8 rounded-xl border border-gray-800 shadow-xl text-center">
               <div className="flex flex-col items-center justify-center gap-4 mb-8">
                 <div className="w-20 h-20 bg-green-600/20 rounded-full flex items-center justify-center">
                   <Check className="h-10 w-10 text-green-500" />
                 </div>
-                <h2 className="text-2xl font-bold text-white">Service Confirmed!</h2>
+                <h2 className="text-2xl font-bold text-white">Order Confirmed!</h2>
                 <p className="text-gray-300 max-w-md">
                   {formData.bookingType === "scheduled"
                     ? "Your battery service has been scheduled. We'll send you a confirmation email with all the details."
@@ -758,14 +1274,9 @@ const BatteryServicesForm = () => {
 
               <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700 mb-8">
                 <div className="flex items-center justify-between mb-4">
-                  <span className="text-gray-300">Booking ID:</span>
-                  <span className="font-medium text-white">BS-{Math.floor(Math.random() * 10000)}</span>
-                </div>
-                <div className="flex items-center justify-between mb-4">
                   <span className="text-gray-300">Service:</span>
                   <span className="font-medium text-white capitalize">
-                    {formData.serviceType}
-                    {formData.serviceType === "replacement" ? ` (${formData.batteryType})` : ""}
+                    {formData.serviceType} {formData.serviceType === "replacement" ? `(${formData.batteryType})` : ""}
                   </span>
                 </div>
                 {formData.bookingType === "scheduled" ? (
@@ -782,23 +1293,16 @@ const BatteryServicesForm = () => {
                   </div>
                 )}
                 <div className="flex items-center justify-between mb-4">
+                  <span className="text-gray-300">Location:</span>
+                  <span className="font-medium text-white">{formData.location}</span>
+                </div>
+                <div className="flex items-center justify-between mb-4">
                   <span className="text-gray-300">Total Amount:</span>
-                  <span className="font-bold text-green-400">${estimatedPrice}</span>
+                  <span className="font-bold text-green-300">${estimatedPrice}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-300">Duration:</span>
                   <span className="font-medium text-white">{estimatedDuration} minutes</span>
-                </div>
-              </div>
-
-              <div className="bg-green-600/10 border border-green-500/30 rounded-lg p-4 flex items-start gap-3 mb-8 text-left">
-                <Battery className="h-5 w-5 text-green-400 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-green-300 mb-1">What to expect</p>
-                  <p className="text-sm text-gray-300">
-                    Our technician will arrive with all necessary equipment and batteries. Please ensure your vehicle is
-                    accessible. Payment will be collected after the service is completed to your satisfaction.
-                  </p>
                 </div>
               </div>
 
@@ -812,6 +1316,8 @@ const BatteryServicesForm = () => {
               </button>
             </div>
           )}
+          
+          <Toaster position="top-right" />
         </div>
       </div>
     </div>
