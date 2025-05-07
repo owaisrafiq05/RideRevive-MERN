@@ -18,7 +18,7 @@ const FuelDeliverySuccess = () => {
 
       try {
         // Fetch order details from session ID
-        const response = await fetch(`http://localhost:3000/api/orders/session/${sessionId}`);
+        const response = await fetch(`${import.meta.env.VITE_SERVER_URL}/orders/session/${sessionId}`);
         const data = await response.json();
 
         if (data.success) {

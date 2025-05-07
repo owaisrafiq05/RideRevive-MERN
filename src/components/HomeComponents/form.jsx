@@ -50,7 +50,7 @@ const CarForm = () => {
       const decodedToken = jwtDecode(token)
       const userId = decodedToken._id
 
-      const response = await axios.post("http://localhost:3000/api/cars/add", {
+      const response = await axios.post(`${import.meta.env.VITE_SERVER_URL}/cars/add`, {
         user: userId,
         ...formData,
       })

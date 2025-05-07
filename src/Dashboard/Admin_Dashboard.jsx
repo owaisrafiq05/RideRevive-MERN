@@ -109,7 +109,7 @@ const AdminDashboard = () => {
     setIsLoading(true)
     try {
       // Fetch all orders
-      const response = await axios.get("http://localhost:3000/api/orders")
+      const response = await axios.get(`${import.meta.env.VITE_SERVER_URL}/orders`)
       
       if (response.data.success) {
         const allOrders = response.data.data

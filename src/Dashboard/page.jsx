@@ -125,7 +125,7 @@ const Dashboard = () => {
         const decodedToken = jwtDecode(token)
         const userId = decodedToken._id
 
-        const response = await axios.get(`http://localhost:3000/api/cars/user/${userId}`)
+        const response = await axios.get(`${import.meta.env.VITE_SERVER_URL}/cars/user/${userId}`)
         if (response.data.status) {
           setVehicles(response.data.data)
           setStats((prev) => ({ ...prev, totalVehicles: response.data.data.length }))

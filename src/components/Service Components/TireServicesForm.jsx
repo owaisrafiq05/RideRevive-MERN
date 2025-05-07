@@ -150,7 +150,7 @@ const TireServicesForm = () => {
       if (!serviceId) {
         try {
           // Create a new tire service
-          const newServiceResponse = await axios.post('http://localhost:3000/api/services', {
+          const newServiceResponse = await axios.post(`${import.meta.env.VITE_SERVER_URL}/services`, {
             name: serviceName,
             description: 'Professional tire services including tire change, pressure check, and puncture repairs.',
             category: 'tires',
@@ -179,7 +179,7 @@ const TireServicesForm = () => {
       } else {
         // If we have a service ID, attempt to get its name
         try {
-          const serviceResponse = await axios.get(`http://localhost:3000/api/services/${serviceId}`);
+          const serviceResponse = await axios.get(`${import.meta.env.VITE_SERVER_URL}/services/${serviceId}`);
           if (serviceResponse.data.success) {
             serviceName = serviceResponse.data.data.name;
           }
@@ -190,7 +190,7 @@ const TireServicesForm = () => {
       }
       
       // Create the order on the server
-      const response = await axios.post('http://localhost:3000/api/orders/create', {
+      const response = await axios.post(`${import.meta.env.VITE_SERVER_URL}/orders/create`, {
         userId: userId,
         carId: formData.carId,
         services: [{
@@ -270,7 +270,7 @@ const TireServicesForm = () => {
       setUserId(userId)
   
       try {
-        const response = await axios.get(`http://localhost:3000/api/cars/user/${userId}`)
+        const response = await axios.get(`${import.meta.env.VITE_SERVER_URL}/cars/user/${userId}`)
         if (response.data.success) {
           setUserCars(response.data.data)
           toast.success("Cars retrieved successfully!")
@@ -283,7 +283,7 @@ const TireServicesForm = () => {
         }
         
         // Fetch the tire service
-        const serviceResponse = await axios.get("http://localhost:3000/api/services")
+        const serviceResponse = await axios.get(`${import.meta.env.VITE_SERVER_URL}/services`)
         if (serviceResponse.data.success) {
           const tireService = serviceResponse.data.data.find(service => 
             service.name.toLowerCase().includes('tire')

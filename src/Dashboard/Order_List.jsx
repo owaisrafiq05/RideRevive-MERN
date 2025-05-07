@@ -28,7 +28,7 @@ const Order_List = () => {
   const fetchOrders = async () => {
     setIsLoading(true)
     try {
-      const response = await axios.get("http://localhost:3000/api/orders")
+      const response = await axios.get(`${import.meta.env.VITE_SERVER_URL}/orders`)
       if (response.data.success) {
         setOrders(response.data.data)
       } else {

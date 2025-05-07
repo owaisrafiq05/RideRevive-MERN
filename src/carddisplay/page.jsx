@@ -80,7 +80,7 @@ const CarListingsApp = () => {
     const userId = decodedToken._id
 
     try {
-      const response = await axios.get(`http://localhost:3000/api/cars/user/${userId}`)
+      const response = await axios.get(`${import.meta.env.VITE_SERVER_URL}/cars/user/${userId}`)
       if (response.data.status) {
         setCarListings(response.data.data) // Set the car listings from the response
         toast.success(response.data.message || "Cars retrieved successfully!")
@@ -109,7 +109,7 @@ const CarListingsApp = () => {
 
   const handleDelete = async (carId) => {
     try {
-      const response = await axios.delete(`http://localhost:3000/api/cars/${carId}`)
+      const response = await axios.delete(`${import.meta.env.VITE_SERVER_URL}/cars/${carId}`)
       if (response.data.status) {
         toast.success(response.data.message || "Car deleted successfully!")
         // Fetch the updated list of cars

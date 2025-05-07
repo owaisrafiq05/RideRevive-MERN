@@ -67,7 +67,7 @@ const FuelDeliveryForm = () => {
       setUserId(userId)
   
       try {
-        const response = await axios.get(`http://localhost:3000/api/cars/user/${userId}`)
+        const response = await axios.get(`${import.meta.env.VITE_SERVER_URL}/cars/user/${userId}`)
         if (response.data.success) {
           setUserCars(response.data.data)
           toast.success("Cars retrieved successfully!")
@@ -80,7 +80,7 @@ const FuelDeliveryForm = () => {
         }
         
         // Fetch the fuel delivery service
-        const serviceResponse = await axios.get("http://localhost:3000/api/services")
+        const serviceResponse = await axios.get(`${import.meta.env.VITE_SERVER_URL}/services`)
         if (serviceResponse.data.success) {
           const fuelService = serviceResponse.data.data.find(service => 
             service.name.toLowerCase().includes('fuel')
@@ -181,7 +181,7 @@ const FuelDeliveryForm = () => {
       if (!serviceId) {
         try {
           // Create a new fuel delivery service
-          const newServiceResponse = await axios.post('http://localhost:3000/api/services', {
+          const newServiceResponse = await axios.post(`${import.meta.env.VITE_SERVER_URL}/services`, {
             name: serviceName,
             description: 'Emergency fuel delivery service for vehicles that have run out of gas.',
             category: 'other',
@@ -210,7 +210,7 @@ const FuelDeliveryForm = () => {
       } else {
         // If we have a service ID, attempt to get its name
         try {
-          const serviceResponse = await axios.get(`http://localhost:3000/api/services/${serviceId}`);
+          const serviceResponse = await axios.get(`${import.meta.env.VITE_SERVER_URL}/services/${serviceId}`);
           if (serviceResponse.data.success) {
             serviceName = serviceResponse.data.data.name;
           }
@@ -221,7 +221,7 @@ const FuelDeliveryForm = () => {
       }
       
       // Create the order on the server
-      const response = await axios.post('http://localhost:3000/api/orders/create', {
+      const response = await axios.post(`${import.meta.env.VITE_SERVER_URL}/orders/create`, {
         userId: userId,
         carId: formData.carId,
         services: [{

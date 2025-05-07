@@ -37,7 +37,7 @@ const Order_Details = () => {
   const fetchOrderDetails = async () => {
     setIsLoading(true)
     try {
-      const response = await axios.get(`http://localhost:3000/api/orders/${orderId}`)
+      const response = await axios.get(`${import.meta.env.VITE_SERVER_URL}/orders/${orderId}`)
       if (response.data.success) {
         setOrder(response.data.data)
         setNewStatus(response.data.data.status)
@@ -58,7 +58,7 @@ const Order_Details = () => {
 
     setIsUpdating(true)
     try {
-      const response = await axios.patch(`http://localhost:3000/api/orders/${orderId}/status`, {
+      const response = await axios.patch(`${import.meta.env.VITE_SERVER_URL}/orders/${orderId}/status`, {
         status: newStatus
       })
       
@@ -79,7 +79,7 @@ const Order_Details = () => {
   const saveAdminNotes = async () => {
     setIsSavingNotes(true)
     try {
-      const response = await axios.patch(`http://localhost:3000/api/orders/${orderId}/notes`, {
+      const response = await axios.patch(`${import.meta.env.VITE_SERVER_URL}/orders/${orderId}/notes`, {
         adminNotes: adminNotes
       })
       

@@ -151,7 +151,7 @@ const CarWashingForm = () => {
       if (!serviceId) {
         try {
           // Create a new car wash service
-          const newServiceResponse = await axios.post('http://localhost:3000/api/services', {
+          const newServiceResponse = await axios.post(`${import.meta.env.VITE_SERVER_URL}/services`, {
             name: serviceName,
             description: 'Professional car washing services for interior, exterior, or complete detailing.',
             category: 'car_wash',
@@ -180,7 +180,7 @@ const CarWashingForm = () => {
       } else {
         // If we have a service ID, attempt to get its name
         try {
-          const serviceResponse = await axios.get(`http://localhost:3000/api/services/${serviceId}`);
+          const serviceResponse = await axios.get(`${import.meta.env.VITE_SERVER_URL}/services/${serviceId}`);
           if (serviceResponse.data.success) {
             serviceName = serviceResponse.data.data.name;
           }
@@ -204,7 +204,7 @@ const CarWashingForm = () => {
       };
       
       // Create the order on the server
-      const response = await axios.post('http://localhost:3000/api/orders/create', {
+      const response = await axios.post(`${import.meta.env.VITE_SERVER_URL}/orders/create`, {
         userId: userId,
         carId: formData.carId,
         services: [{
@@ -257,7 +257,7 @@ const CarWashingForm = () => {
       setUserId(userId)
   
       try {
-        const response = await axios.get(`http://localhost:3000/api/cars/user/${userId}`)
+        const response = await axios.get(`${import.meta.env.VITE_SERVER_URL}/cars/user/${userId}`)
         if (response.data.success) {
           setUserCars(response.data.data)
           toast.success("Cars retrieved successfully!")
@@ -270,7 +270,7 @@ const CarWashingForm = () => {
         }
         
         // Fetch the car wash service
-        const serviceResponse = await axios.get("http://localhost:3000/api/services")
+        const serviceResponse = await axios.get(`${import.meta.env.VITE_SERVER_URL}/services`)
         if (serviceResponse.data.success) {
           const carWashService = serviceResponse.data.data.find(service => 
             service.name.toLowerCase().includes('car wash')
