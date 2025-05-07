@@ -10,9 +10,9 @@ export default defineConfig({
     port: 3001,
     strictPort: true,
   },
-  resolve: {
-    alias: {
-      'mapbox-gl': 'mapbox-gl'
+  build: {
+    commonjsOptions: {
+      include: [/mapbox-gl/, /node_modules/]
     }
   },
   optimizeDeps: {
