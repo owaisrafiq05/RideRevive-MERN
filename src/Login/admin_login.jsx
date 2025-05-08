@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from "sonner";
 import Cookies from 'js-cookie';
 import { Shield, Lock } from "lucide-react";
+import { useAuth } from '../contexts/AuthContext';
 
 const AdminLogin = () => {
   const [formData, setFormData] = useState({
@@ -13,6 +14,7 @@ const AdminLogin = () => {
 
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleChange = (e) => {
     const { id, value } = e.target;
@@ -54,9 +56,13 @@ const AdminLogin = () => {
 
       if (response.data.status) {
         toast.success(response.data.message || "Admin login successful!");
-        Cookies.set('adminToken', response.data.token); // Save token in cookies
-        localStorage.setItem('adminData', JSON.stringify(response.data.data)); // Save admin data
-        navigate(`/admin/dashboard`); // Redirect to admin dashboard
+        
+        // Save admin token and data 
+        Cookies.set('adminToken', response.data.token);
+        localStorage.setItem('adminData', JSON.stringify(response.data.data));
+        
+        // Use the login function from context with admin role
+        login(response.data.data, response.data.token, 'admin');
       }
     } catch (error) {
       console.error('Login error:', error);

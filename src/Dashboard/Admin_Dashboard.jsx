@@ -6,6 +6,7 @@ import Cookies from "js-cookie"
 import { jwtDecode } from "jwt-decode"
 import axios from "axios"
 import { toast } from "sonner"
+import { getAdminData } from "../utils/auth"
 import {
   Users,
   Car,
@@ -87,23 +88,21 @@ const AdminDashboard = () => {
   useEffect(() => {
     const fetchAdminData = async () => {
       try {
-        const token = Cookies.get("token")
-        if (token) {
-          const decodedToken = jwtDecode(token)
-          // For a real app, you would verify admin status
+        const adminData = getAdminData();
+        if (adminData) {
           setAdmin({
-            name: decodedToken.name || "Admin",
-            id: decodedToken._id,
-          })
+            name: adminData.name || "Admin",
+            id: adminData._id || adminData.id,
+          });
         }
       } catch (error) {
-        console.error("Error fetching admin data:", error)
+        console.error("Error fetching admin data:", error);
       }
-    }
+    };
 
-    fetchAdminData()
-    fetchOrders()
-  }, [])
+    fetchAdminData();
+    fetchOrders();
+  }, []);
 
   const fetchOrders = async () => {
     setIsLoading(true)

@@ -3,6 +3,7 @@ import axios from "axios";
 import { useNavigate } from 'react-router-dom';
 import { toast } from "sonner"; // Import Sonner for notifications
 import Cookies from 'js-cookie'; // Import js-cookie for cookie management
+import { useAuth } from '../contexts/AuthContext';
 
 // Mock toast functionality (you might want to use a library like react-toastify or react-hot-toast)
 
@@ -14,6 +15,7 @@ const Login = () => {
 
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleChange = (e) => {
     const { id, value } = e.target;
@@ -55,9 +57,13 @@ const Login = () => {
 
       if (response.data.status) {
         toast.success(response.data.message || "Login successful!");
-        Cookies.set('token', response.data.token); // Save token in cookies
-        localStorage.setItem('userData', JSON.stringify(response.data.data)); // Save user data
-        navigate(`/`); // Redirect to dashboard
+        
+        // Save token and user data
+        Cookies.set('token', response.data.token);
+        localStorage.setItem('userData', JSON.stringify(response.data.data));
+        
+        // Use the login function from context
+        login(response.data.data, response.data.token);
       }
     } catch (error) {
       console.error('Login error:', error);

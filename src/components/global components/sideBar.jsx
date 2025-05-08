@@ -3,15 +3,33 @@ import { FiHome, FiSettings, FiLogOut, FiMenu, FiX } from "react-icons/fi";
 import { FaTrophy } from "react-icons/fa";
 import { FaCar } from "react-icons/fa";
 import { FaCartPlus } from "react-icons/fa";
-import { Link, useNavigate } from 'react-router-dom';
-import Cookies from "js-cookie";
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from "sonner";
+import { useAuth } from "../../contexts/AuthContext";
 
 const Sidebar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [activeLink, setActiveLink] = useState("home");
   const navigate = useNavigate();
+  const location = useLocation();
+  const { logout } = useAuth();
+
+  useEffect(() => {
+    // Set active link based on current path
+    const path = location.pathname;
+    if (path === '/') {
+      setActiveLink("home");
+    } else if (path.includes("/services")) {
+      setActiveLink("services");
+    } else if (path.includes("/vehicles")) {
+      setActiveLink("vehicles");
+    } else if (path.includes("/leaderboard")) {
+      setActiveLink("leaderboard");
+    } else if (path.includes("/profile")) {
+      setActiveLink("settings");
+    }
+  }, [location]);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -54,18 +72,6 @@ const Sidebar = () => {
         title: "Vehicles",
         icon: <FaCar className="w-5 h-5" />,
         path: "/vehicles"
-    },
-    {
-      id: "leaderboard",
-      title: "Leaderboard",
-      icon: <FaTrophy className="w-5 h-5" />,
-      path: "/leaderboard"
-    },
-    {
-      id: "settings",
-      title: "Settings",
-      icon: <FiSettings className="w-5 h-5" />,
-      path: "/profile"
     }
   ];
 
@@ -79,10 +85,7 @@ const Sidebar = () => {
   };
 
   const handleLogout = () => {
-    Cookies.remove('token');
-    Cookies.remove('userId');
-    toast.success('Logged out successfully');
-    navigate('/login');
+    logout('user');
   };
 
   return (
@@ -117,10 +120,7 @@ const Sidebar = () => {
                 <li key={item.id}>
                   <Link
                     to={item.path}
-                    onClick={() => {
-                      handleLinkClick(item.id);
-                      if (item.id === "home") toggleSidebar();
-                    }}
+                    onClick={() => handleLinkClick(item.id)}
                     className={`w-full flex items-center px-4 py-3 rounded-lg transition-colors duration-200
                       ${activeLink === item.id
                         ? "bg-gradient-to-r from-blue-700 to-blue-600 text-white"
